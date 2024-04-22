@@ -1,10 +1,12 @@
 #include <bits/stdc++.h>
+#include <shared_mutex>
 #include <stdexcept>
 #include <mutex>
 
 using namespace std;
 
 // useful link: https://www.geeksforgeeks.org/extendible-hashing-dynamic-approach-to-dbms/
+// coarse grained: every time someone wants to modify they get a lock on the whole directory
 
 class Bucket {
   int local_depth;
@@ -12,7 +14,6 @@ class Bucket {
   std::map<int, string> elements;
   public:
     Bucket(int local_depth, int bucket_size);
-    std::mutex bucket_lock;
     int size();
     bool get(int key, string* value);
     void insert(int key, string value);
@@ -30,7 +31,7 @@ class Directory{
   std::vector<Bucket *> buckets;
   public:
     Directory(int bucket_size);
-    std::mutex directory_lock;
+    std::shared_mutex directory_mutex;
     int hash(int key);
     bool get(int key, string* value);
     void insert(int key, string value);
@@ -113,22 +114,27 @@ int Directory::hash(int key){
 
 bool Directory::get(int key, string *val){
   int hash_key = this->hash(key);
+  std::shared_lock<std::shared_mutex> directory_lock(this->directory_mutex);
   Bucket *bucket = this->buckets[hash_key];
   string value;
   if(bucket->get(key, &value)){
     val = &value;
+    directory_lock.unlock();
     return true;
   }
+  directory_lock.unlock();
   return false;
 }
 
 void Directory::insert(int key, string value){
   int hash_key = this->hash(key);
+  std::unique_lock<std::shared_mutex> directory_lock(this->directory_mutex);
   Bucket *bucket = this->buckets[hash_key];
   // case 1: bucket is not full
   // just insert. nothing complicated
   if (bucket->size() < this->bucket_size){
     bucket->insert(key, value); 
+    directory_lock.unlock();
     return;
   }
 
@@ -162,18 +168,21 @@ void Directory::insert(int key, string value){
 
     }
   }
-
+  directory_lock.unlock();
 }
 
 void Directory::remove(int key){
   int hash_key = this->hash(key);
+  std::unique_lock<std::shared_mutex> directory_lock(this->directory_mutex);
   Bucket *bucket = this->buckets[hash_key]; 
   if (!bucket->remove(key)){
+    directory_lock.unlock();
     throw std::invalid_argument("key not found");
   }
 
   // check to see if we need to recursively merge
   if (bucket->size() != 0){
+    directory_lock.unlock();
     return;
   }
   bucket->decreaseDepth();
@@ -212,23 +221,30 @@ void Directory::remove(int key){
       this->global_depth --;
     }
   }
+  directory_lock.unlock();
 }
 
 void Directory::update(int key, string value){
   int hash_key = this->hash(key);
+  std::unique_lock<std::shared_mutex> directory_lock(this->directory_mutex);
   auto bucket = this->buckets[hash_key];
   bucket->update(key, value);
+  directory_lock.unlock();
 }
 
 int Directory::getSplitIdx(int bucketIdx){
+  std::shared_lock<std::shared_mutex> directory_lock(this->directory_mutex);
   int mask = 1 << this->buckets[bucketIdx]->getLocalDepth();
+  directory_lock.unlock();
   return bucketIdx ^ mask; 
 }
 
 void Directory::increaseGlobalDepth(){
   // all new buckets should point to their split index
+  std::unique_lock<std::shared_mutex> directory_lock(this->directory_mutex);
   for (int i = 0; i < (1 << this->global_depth); i ++){
     this->buckets.emplace_back(buckets[i]);
   }
   this->global_depth++;
+  directory_lock.unlock();
 }
