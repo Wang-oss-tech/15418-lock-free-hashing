@@ -12,10 +12,11 @@ class Bucket {
     Bucket(int local_depth, int bucket_size);
     int size();
     void insert(int key, string value);
-    void remove(int key);
+    bool remove(int key);
     void update(int key, string value);
     std::map<int, string> getElements();
     void increaseDepth();
+    void decreaseDepth();
     int getLocalDepth();
 };
 
@@ -50,12 +51,13 @@ void Bucket::insert(int key, string value){
   this->elements.insert({key, value});
 }
 
-void Bucket::remove(int key){
+bool Bucket::remove(int key){
   auto it = this->elements.find(key);
   if (it == this->elements.end()){
-    throw std::invalid_argument("key not in bucket\n");
+    return false;
   }
   this->elements.erase(it);
+  return true;
 }
 
 void Bucket::update(int key, string value){
@@ -68,6 +70,10 @@ void Bucket::update(int key, string value){
 
 void Bucket::increaseDepth(){
   this->local_depth++;
+}
+
+void Bucket::decreaseDepth(){
+  this->local_depth--;
 }
 
 int Bucket::getLocalDepth(){
@@ -134,11 +140,58 @@ void Directory::insert(int key, string value){
 }
 
 void Directory::remove(int key){
+  int hash_key = this->hash(key);
+  Bucket *bucket = this->buckets[hash_key]; 
+  if (!bucket->remove(key)){
+    throw std::invalid_argument("key not found");
+  }
 
+  // check to see if we need to recursively merge
+  if (bucket->size() != 0){
+    return;
+  }
+  bucket->decreaseDepth();
+
+  // new bucket should be the minimum
+  auto idx = hash_key;
+  bool stop_merging = false;
+  while (!stop_merging){
+    auto split_idx = this->getSplitIdx(idx);
+    auto new_bucket = this->buckets[split_idx];
+
+    // if both the main bucket and split bucket are empty, we merge them together
+    if (new_bucket->size() == 0 && new_bucket->getLocalDepth() == bucket->getLocalDepth()){
+      new_bucket->decreaseDepth();
+      // change all things pointing to same bucket to new one
+      auto idx_inc = 1 << bucket->getLocalDepth();
+      for (int i = idx; i >= 0; i -= idx_inc){
+        this->buckets[i] = new_bucket;
+      }
+      for (int i = idx; i < 1 << this->global_depth; i += idx_inc){
+        this->buckets[i] = new_bucket;
+      }
+    } 
+    else{
+      stop_merging = true;
+    }
+
+    // check if we can decrease depth
+    bool can_decrease = true;
+    for (auto &b : this->buckets){
+      if (b->getLocalDepth() == this->global_depth){
+        can_decrease = false;
+      }
+    }
+    if (can_decrease){
+      this->global_depth --;
+    }
+  }
 }
 
 void Directory::update(int key, string value){
-
+  int hash_key = this->hash(key);
+  auto bucket = this->buckets[hash_key];
+  bucket->update(key, value);
 }
 
 int Directory::getSplitIdx(int bucketIdx){
