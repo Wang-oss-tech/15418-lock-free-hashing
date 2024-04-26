@@ -1,14 +1,11 @@
 #include <bits/stdc++.h>
-#include "coarse_grained.h"
-#include <shared_mutex>
 #include <stdexcept>
-#include <stdio.h>
 #include <mutex>
+#include "fine_grained.h"
 
 using namespace std;
 
 // useful link: https://www.geeksforgeeks.org/extendible-hashing-dynamic-approach-to-dbms/
-// coarse grained: every time someone wants to modify they get a lock on the whole directory
 
 Bucket::Bucket(int local_depth, int bucket_size){
   this->local_depth = local_depth;
@@ -76,33 +73,32 @@ Directory::Directory(int bucket_size){
 }
 
 int Directory::hash(int key){
+  std::unique_lock<std::shared_mutex> directory_lock(this->directory_mutex);
   int mask = 1 << this->global_depth;
   return key & mask; 
 }
 
 bool Directory::get(int key, string *val){
-  int hash_key = this->hash(key);
   std::shared_lock<std::shared_mutex> directory_lock(this->directory_mutex);
+  int hash_key = this->hash(key);
   Bucket *bucket = this->buckets[hash_key];
+  std::shared_lock<std::shared_mutex> bucket_lock(bucket->bucket_mutex);
+  directory_lock.unlock();
   string value;
   if(bucket->get(key, &value)){
     val = &value;
-    directory_lock.unlock();
     return true;
   }
-  directory_lock.unlock();
   return false;
 }
 
 void Directory::insert(int key, string value){
   int hash_key = this->hash(key);
-  std::unique_lock<std::shared_mutex> directory_lock(this->directory_mutex);
   Bucket *bucket = this->buckets[hash_key];
   // case 1: bucket is not full
   // just insert. nothing complicated
   if (bucket->size() < this->bucket_size){
     bucket->insert(key, value); 
-    directory_lock.unlock();
     return;
   }
 
@@ -136,21 +132,18 @@ void Directory::insert(int key, string value){
 
     }
   }
-  directory_lock.unlock();
+
 }
 
 void Directory::remove(int key){
   int hash_key = this->hash(key);
-  std::unique_lock<std::shared_mutex> directory_lock(this->directory_mutex);
   Bucket *bucket = this->buckets[hash_key]; 
   if (!bucket->remove(key)){
-    directory_lock.unlock();
     throw std::invalid_argument("key not found");
   }
 
   // check to see if we need to recursively merge
   if (bucket->size() != 0){
-    directory_lock.unlock();
     return;
   }
   bucket->decreaseDepth();
@@ -189,41 +182,23 @@ void Directory::remove(int key){
       this->global_depth --;
     }
   }
-  directory_lock.unlock();
 }
 
 void Directory::update(int key, string value){
   int hash_key = this->hash(key);
-  std::unique_lock<std::shared_mutex> directory_lock(this->directory_mutex);
   auto bucket = this->buckets[hash_key];
   bucket->update(key, value);
-  directory_lock.unlock();
 }
 
 int Directory::getSplitIdx(int bucketIdx){
-  std::shared_lock<std::shared_mutex> directory_lock(this->directory_mutex);
   int mask = 1 << this->buckets[bucketIdx]->getLocalDepth();
-  directory_lock.unlock();
   return bucketIdx ^ mask; 
 }
 
 void Directory::increaseGlobalDepth(){
   // all new buckets should point to their split index
-  std::unique_lock<std::shared_mutex> directory_lock(this->directory_mutex);
   for (int i = 0; i < (1 << this->global_depth); i ++){
     this->buckets.emplace_back(buckets[i]);
   }
   this->global_depth++;
-  directory_lock.unlock();
-}
-
-void Directory::print_dir(){
-  std::shared_lock<std::shared_mutex> directory_lock(this->directory_mutex);
-  char* str;
-  for (int i = 0; i < buckets.size(); i++){
-    sprintf(str, "Bucket %d: \n", i);
-    Bucket *bucket = this->buckets[i];
-    std::map<int, string> elems = bucket->getElements();
-    // std
-  }
 }
