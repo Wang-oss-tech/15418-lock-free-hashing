@@ -217,13 +217,30 @@ void Directory::increaseGlobalDepth(){
   directory_lock.unlock();
 }
 
-void Directory::print_dir(){
-  std::shared_lock<std::shared_mutex> directory_lock(this->directory_mutex);
-  char* str;
-  for (int i = 0; i < buckets.size(); i++){
-    sprintf(str, "Bucket %d: \n", i);
-    Bucket *bucket = this->buckets[i];
-    std::map<int, string> elems = bucket->getElements();
-    // std
-  }
+void Directory::print_dir() {
+    std::shared_lock<std::shared_mutex> directory_lock(this->directory_mutex);
+    char str[100]; // Adjust the size according to your needs
+    for (int i = 0; i < buckets.size(); i++) {
+        printf("Bucket %d: \n", i);
+        Bucket *bucket = this->buckets[i];
+        std::map<int, string> elems = bucket->getElements();
+        for (auto it = elems.begin(); it != elems.end(); ++it) {
+            sprintf(str, "  Key: %d, Value: %s\n", it->first, it->second.c_str());
+            printf("%s", str);
+        }
+    }
 }
+
+// void Directory::print_dir(){
+//   std::shared_lock<std::shared_mutex> directory_lock(this->directory_mutex);
+//   char* str;
+//   for (int i = 0; i < buckets.size(); i++){
+//     sprintf(str, "Bucket %d: \n", i);
+//     Bucket *bucket = this->buckets[i];
+//     std::map<int, string> elems = bucket->getElements();
+//     for (auto it = elems.begin(); it != elems.end(); ++it){
+//       sprintf(" Key: %d, Value: %s\n", it->first, it->second.c_str());
+//     }
+//   }
+//   directory_lock.unlock();
+// }
