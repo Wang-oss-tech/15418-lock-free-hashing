@@ -52,20 +52,16 @@ void test_one(Directory *directory){
   directory->insert(1, "one");
   directory->remove(0);
   directory->update(1, "new");
+
+  // Prints the directory after operations
+  directory->print_dir();
 }
 
 int main() {
     Directory directory(10); // adjust bucket size as needed
-
     // testing one thread
     std::thread t1(test_one, &directory);
-    
     t1.join();
-    
-    
-    
-    
-    
     
     // std::thread t1(test_inserts, &directory);
     // std::thread t2(test_reads, &directory);
@@ -74,7 +70,6 @@ int main() {
     // t1.join();
     // t2.join();
     // t3.join();
-
     return 0;
 }
 
