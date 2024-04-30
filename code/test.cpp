@@ -1,12 +1,8 @@
 #include "coarse_grained.h"
 #include <bits/stdc++.h>
-#include <shared_mutex>
-#include <stdexcept>
-#include <mutex>
 
 
 // Testing library for a multithreaded environment
-#include <vector>
 #include <thread>
 #include <iostream>
 #include <cassert>
@@ -17,9 +13,12 @@ using namespace std;
 
 void test_inserts(Directory* directory) {
     // Attempt to insert multiple values into the directory
-    for (int i = 0; i < 100; ++i) {
+    for (int i = 0; i < 50; ++i) {
         try {
             directory->insert(i, "value" + std::to_string(i));
+            directory->print_dir();
+            printf("\n");
+
         } catch (const std::exception& e) {
             std::cerr << "Exception during insert: " << e.what() << std::endl;
         }
@@ -48,19 +47,28 @@ void test_deletes(Directory* directory) {
 }
 
 void test_one(Directory *directory){
-  directory->insert(0, "zero");
-  directory->insert(1, "one");
-  directory->remove(0);
-  directory->update(1, "new");
+    try{
+        // printf("???????\n");
+        directory->insert(0, "zero");
+        // printf("???????\n");
+        // directory->print_dir();
+        directory->insert(1, "one");
+        directory->remove(0);
+        directory->update(1, "new");
 
-  // Prints the directory after operations
-  directory->print_dir();
+        // Prints the directory after operations
+        directory->print_dir();
+    } catch(const std::exception& e) {
+        std::cerr << "Exception during insert: " << e.what() << std::endl;
+    } 
+
 }
 
 int main() {
-    Directory directory(10); // adjust bucket size as needed
+    Directory d = Directory(2); // adjust bucket size as needed
     // testing one thread
-    std::thread t1(test_one, &directory);
+    std::thread t1(test_inserts, &d);
+
     t1.join();
     
     // std::thread t1(test_inserts, &directory);
