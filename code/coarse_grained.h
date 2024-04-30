@@ -12,7 +12,7 @@ class Bucket {
     Bucket(int local_depth, int bucket_size);
     int size();
     bool get(int key, std::string* value);
-    void insert(int key, std::string value);
+    bool insert(int key, std::string value);
     bool remove(int key);
     void update(int key, std::string value);
     std::map<int, std::string> getElements();
