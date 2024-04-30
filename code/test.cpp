@@ -25,6 +25,22 @@ void test_inserts(Directory* directory) {
     directory->print_dir();
 }
 
+void test_merge(Directory* directory){
+    directory->insert(0, "value0");
+    directory->insert(1, "value1");
+    directory->insert(3, "value3");
+    directory->insert(5, "value5");
+    directory->insert(7, "value7");
+    directory->print_dir();
+    printf("DONE INSERTING\n\n");
+    directory->remove(1);
+    directory->remove(3);
+    directory->remove(5);
+    // expect a merge on 7
+    directory->remove(7);
+    directory->print_dir();
+}
+
 void test_reads(Directory* directory) {
     // Attempt to read values back from the directory
     std::string value;
