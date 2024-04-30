@@ -89,7 +89,7 @@ bool Directory::get(int key, string *val){
   Bucket *bucket = this->buckets[hash_key];
   string value;
   if(bucket->get(key, &value)){
-    val = &value;
+    *val = value;
     directory_lock.unlock();
     return true;
   }
@@ -169,11 +169,11 @@ void Directory::remove(int key){
     directory_lock.unlock();
     return;
   }
-  bucket->decreaseDepth();
 
   // new bucket should be the minimum
   auto idx = hash_key;
   bool stop_merging = false;
+  printf("recursively merging\n");
   while (!stop_merging){
     auto split_idx = this->getSplitIdx(idx);
     auto new_bucket = this->buckets[split_idx];
@@ -205,6 +205,7 @@ void Directory::remove(int key){
       this->global_depth --;
     }
   }
+  bucket->decreaseDepth();
   directory_lock.unlock();
 }
 
