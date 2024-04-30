@@ -173,14 +173,15 @@ void Directory::remove(int key){
   // new bucket should be the minimum
   auto idx = hash_key;
   bool stop_merging = false;
-  printf("recursively merging\n");
   while (!stop_merging){
     auto split_idx = this->getSplitIdx(idx);
     auto new_bucket = this->buckets[split_idx];
 
     // if both the main bucket and split bucket are empty, we merge them together
     if (new_bucket->size() == 0 && new_bucket->getLocalDepth() == bucket->getLocalDepth()){
+      printf("merging buckets %d and %d\n", idx, split_idx);
       new_bucket->decreaseDepth();
+      bucket->decreaseDepth();
       // change all things pointing to same bucket to new one
       auto idx_inc = 1 << bucket->getLocalDepth();
       for (int i = idx; i >= 0; i -= idx_inc){
@@ -202,10 +203,16 @@ void Directory::remove(int key){
       }
     }
     if (can_decrease){
+      if (this->global_depth == 1){
+        break;
+      }
       this->global_depth --;
+      for (int i = 0; i < (1 << this->global_depth); i++){
+        this->buckets.pop_back();
+      }
+      printf("decreasing global depth to %d:\n", this->global_depth);
     }
   }
-  bucket->decreaseDepth();
   directory_lock.unlock();
 }
 
