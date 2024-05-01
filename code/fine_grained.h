@@ -37,4 +37,5 @@ class Directory{
     void split(int bucketIdx);
     int getSplitIdx(int bucketIdx);
     void increaseGlobalDepth();
+    void print_dir();
 };

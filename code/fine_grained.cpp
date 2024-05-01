@@ -202,3 +202,19 @@ void Directory::increaseGlobalDepth(){
   }
   this->global_depth++;
 }
+
+void Directory::print_dir() {
+    char str[100]; // Adjust the size according to your needs
+    printf("Printing Directory \n\n");
+    printf("GLOBAL DEPTH: %d\n", this->global_depth);
+    for (int i = 0; i < buckets.size(); i++) {
+        Bucket *bucket = this->buckets[i];
+        printf("BUCKET %d, depth %d:\n ", i, bucket->getLocalDepth());
+        std::map<int, string> elems = bucket->getElements();
+        for (auto it = elems.begin(); it != elems.end(); ++it) {
+            sprintf(str, "  Key: %d, Value: %s \n", it->first, it->second.c_str());
+            printf("%s", str);
+        }
+        printf("\n");
+    }
+}

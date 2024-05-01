@@ -12,6 +12,7 @@ using namespace std;
 
 
 void test_inserts(Directory* directory) {
+    printf("Inserting test 1 called \n\n");
     // Attempt to insert multiple values into the directory
     for (int i = 0; i < 10; ++i) {
         try {
@@ -22,8 +23,40 @@ void test_inserts(Directory* directory) {
             std::cerr << "Exception during insert: " << e.what() << std::endl;
         }
     }
-    directory->print_dir();
+    // directory->print_dir();
 }
+
+void test_inserts_2(Directory* directory) {
+    printf("Inserting test 2 called \n\n");
+    // Attempt to insert multiple values into the directory
+    for (int i = 20; i < 25; ++i) {
+        try {
+            directory->insert(i, "value" + std::to_string(i));
+            printf("\n");
+
+        } catch (const std::exception& e) {
+            std::cerr << "Exception during insert: " << e.what() << std::endl;
+        }
+    }
+    // directory->print_dir();
+}
+
+void test_inserts_3(Directory* directory) {
+    printf("Inserting test 3 called \n\n");
+    // Attempt to insert multiple values into the directory
+    for (int i = 30; i < 35; ++i) {
+        try {
+            directory->insert(i, "value" + std::to_string(i));
+            printf("\n");
+
+        } catch (const std::exception& e) {
+            std::cerr << "Exception during insert: " << e.what() << std::endl;
+        }
+    }
+    // directory->print_dir();
+}
+
+
 
 void test_merge(Directory* directory){
     directory->insert(0, "value0");
@@ -42,6 +75,7 @@ void test_merge(Directory* directory){
 }
 
 void test_reads(Directory* directory) {
+    printf("Reading test called\n\n");
     // Attempt to read values back from the directory
     std::string value;
     for (int i = 0; i < 10; ++i) {
@@ -54,6 +88,7 @@ void test_reads(Directory* directory) {
 }
 
 void test_deletes(Directory* directory) {
+    printf("\nDeleting test 1 called\n\n");
     // Attempt to remove values
     for (int i = 0; i < 10; ++i) {
         try {
@@ -66,6 +101,34 @@ void test_deletes(Directory* directory) {
     }
 }
 
+void test_deletes_2(Directory* directory){
+    printf("\n Deleting test 2 called\n\n");
+    // Attempt to remove multiple values from the directory
+    for (int i = 20; i < 25; ++i) {
+        try {
+            directory->insert(i, "value" + std::to_string(i));
+            printf("\n");
+
+        } catch (const std::exception& e) {
+            std::cerr << "Exception during insert: " << e.what() << std::endl;
+        }
+    }
+}
+
+void test_deletes_3(Directory* directory){
+    printf("\n Deleting test 3 called\n\n");
+    // Attempt to remove multiple values from the directory
+    for (int i = 30; i < 35; ++i) {
+        try {
+            directory->insert(i, "value" + std::to_string(i));
+            printf("\n");
+
+        } catch (const std::exception& e) {
+            std::cerr << "Exception during insert: " << e.what() << std::endl;
+        }
+    }
+}
+
 void test_sequential(Directory *directory){
     try{
        test_inserts(directory);
@@ -74,23 +137,30 @@ void test_sequential(Directory *directory){
     } catch(const std::exception& e) {
         std::cerr << "Exception: " << e.what() << std::endl;
     } 
-
 }
 
-int main() {
-    Directory d = Directory(2); // adjust bucket size as needed
-    // testing one thread
-    std::thread t1(test_sequential, &d);
 
+
+int main() {
+    // setting bucket size to 2 and setting directory
+    Directory d = Directory(2); // adjust bucket size as needed
     
-    // std::thread t1(test_inserts, &d);
-    // std::thread t2(test_reads, &d);
-    // std::thread t3(test_deletes, &d);
+    
+    // testing one thread
+    // std::thread t1(test_sequential, &d);
+
+
+    // Multiple Thread test
+    std::thread t1(test_inserts, &d);
+    std::thread t2(test_inserts_2, &d);
+    std::thread t3(test_inserts_3, &d);
 
     t1.join();
-    // t1.join();
-    // t2.join();
-    // t3.join();
+    t2.join();
+    t3.join();
+
+    d.print_dir();
+
     return 0;
 }
 
