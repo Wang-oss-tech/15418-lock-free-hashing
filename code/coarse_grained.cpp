@@ -32,7 +32,6 @@ bool Bucket::insert(int key, string value){
   if (this->bucket_size == this->elements.size()){
     return false;
   }
-  // printf("bucket insert\n");
   this->elements.insert({key, value});
   return true;
 }
@@ -109,7 +108,7 @@ void Directory::insert(int key, string value){
   // just insert. nothing complicated
   if (bucket->size() < this->bucket_size){
     // printf("bucket not full\n");
-    printf("KEY %d inserted into %d\n", key, hash_key);
+    // printf("KEY %d inserted into %d\n", key, hash_key);
     bucket->insert(key, value); 
     // printf("inserted into bucket\n");
     directory_lock.unlock();
@@ -144,7 +143,7 @@ void Directory::insert(int key, string value){
     // insert the current element. if still can't insert, need to keep splitting
     Bucket *new_bucket = this->buckets[this->hash(key)];
     if (new_bucket->insert(key, value)){
-      printf("KEY %d inserted into %d\n", key, this->hash(key));
+      // printf("KEY %d inserted into %d\n", key, this->hash(key));
       stop_splitting = true; 
     }
     else { // need to keep splitting
@@ -179,7 +178,7 @@ void Directory::remove(int key){
 
     // if both the main bucket and split bucket are empty, we merge them together
     if (new_bucket->size() == 0 && new_bucket->getLocalDepth() == bucket->getLocalDepth()){
-      printf("merging buckets %d and %d\n", idx, split_idx);
+      // printf("merging buckets %d and %d\n", idx, split_idx);
       new_bucket->decreaseDepth();
       bucket->decreaseDepth();
       // change all things pointing to same bucket to new one
@@ -244,6 +243,7 @@ void Directory::increaseGlobalDepth(){
 
 void Directory::print_dir() {
     char str[100]; // Adjust the size according to your needs
+    printf("Printing Directory \n\n");
     printf("GLOBAL DEPTH: %d\n", this->global_depth);
     for (int i = 0; i < buckets.size(); i++) {
         Bucket *bucket = this->buckets[i];
@@ -256,17 +256,3 @@ void Directory::print_dir() {
         printf("\n");
     }
 }
-
-// void Directory::print_dir(){
-//   std::shared_lock<std::shared_mutex> directory_lock(this->directory_mutex);
-//   char* str;
-//   for (int i = 0; i < buckets.size(); i++){
-//     sprintf(str, "Bucket %d: \n", i);
-//     Bucket *bucket = this->buckets[i];
-//     std::map<int, string> elems = bucket->getElements();
-//     for (auto it = elems.begin(); it != elems.end(); ++it){
-//       sprintf(" Key: %d, Value: %s\n", it->first, it->second.c_str());
-//     }
-//   }
-//   directory_lock.unlock();
-// }
