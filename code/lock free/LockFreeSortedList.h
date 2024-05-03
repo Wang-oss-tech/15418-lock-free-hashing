@@ -3,6 +3,7 @@
 // modifications:
 // - find, insert, and remove take in a starting pointer and end after key out of range
 // - modified it to be in increasing order
+// - unique keys. only one value per key
 
 #ifndef LOCKFREESORTEDLIST_H
 #define LOCKFREESORTEDLIST_H
@@ -154,43 +155,17 @@ public:
   /**
    * @brief remove remove a node with key and value combination
    * @param key
-   * @param value
    * @param hints - an optional vector of pointers to internal items to try starting the search at
    */
-  void remove(K key,v value, LockFreeSortedListItem *hints = nullptr)
+  bool remove(K key,LockFreeSortedListItem *hints = nullptr)
   {
     m_transcount.fetch_add(1);
     struct LockFreeSortedListItem *p = head.load();
     struct LockFreeSortedListItem *n = nullptr,*i = nullptr;
     bool found = false;
 
-    // // Check our passed in hints to make this a lot faster
-    // if (hints)
-    // {
-    //   for (auto it = hints->begin(); it < hints->end(); it++)
-    //   {
-    //     i = dynamic_cast<struct LockFreeSortedListItem *>(*it);
-    //     if (!i)
-    //       continue;
-    //     struct LockFreeSortedListItem *j = i->next_ptr;
-    //     if (i && j && j->key == key && j->value == value)
-    //     {
-    //       struct LockFreeSortedListItem *j = i->next_ptr;
-    //       if (i->next_ptr.compare_exchange_strong(j,j->next_ptr))
-    //       {
-    //         p = i;
-    //         n = j;
-    //         found = true;
-    //         m_size.fetch_sub(1);
-    //         break;
-    //       } else {
-    //         break;
-    //       }
-    //     }
-    //   }
-    // }
     // Test for head node needing removed
-    if (!found && p && p->key == key && p->value == value)
+    if (!found && p && p->key == key)
     {
       n = p->next_ptr;
       if (head.compare_exchange_strong(p,n))
@@ -207,9 +182,9 @@ public:
       n = p->next_ptr;
       if (!n || n->key > key)
       {
-        return; // Never found and at end of list, return
+        return false; // Never found and at end of list, return
       }
-      if (n->key == key && n->value == value)
+      if (n->key == key)
       {
         // We found it, n points to the item to remove, p points to previous
         if (!p->next_ptr.compare_exchange_strong(n,n->next_ptr)) // Item changed
@@ -224,8 +199,32 @@ public:
       }
       p = n;
     }
-    if (found)
+    if (found){
       delete n;
+      return true;
+    }
+    return false;
+  }
+
+  struct LockFreeSortedListItem *getNode(int key){
+    m_transcount.fetch_add(1);
+    struct LockFreeSortedListItem *p = head;
+
+    while (p)
+    {
+      K ik = p->key;
+      // sorted so can't be in list
+      if (ik > key){
+        return false;
+      }
+      if (ik == key)
+      {
+        v rba(p->value);
+        return p;
+      } 
+      p = p->next_ptr;
+    }
+    return nullptr;
   }
 
   struct LockFreeSortedListItem *headPtr() { return head; }

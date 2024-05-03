@@ -34,8 +34,17 @@ int reverseBits(int n){
     return rev;
 }
 
-void LockFreeExtendibleHashTable::initializeBucket(int bucket){
 
+
+// this function flips the most significant bit
+int getParent(int key){
+	int i;
+	for (i = 31; i >= 0; i--) {
+		if (key & (1 << i)) {
+      return key & ~(1 << i);
+    }
+	}
+	return 0;
 }
 
 int makeRegularKey(int key){
@@ -45,6 +54,21 @@ int makeRegularKey(int key){
 
 int makeDummyKey(int key){
   return reverseBits(key);
+}
+
+void LockFreeExtendibleHashTable::initializeBucket(int bucket){
+  int parent = getParent(bucket);
+  auto curr_buckets = buckets.load();
+  if (curr_buckets[parent] == nullptr){
+    initializeBucket(parent);
+  }
+  auto dummyKey = makeDummyKey(bucket);
+  // if insert fails that means another node created dummykey already, but
+  // thats ok because we are calling getNode to get the node
+  T.insert(dummyKey, "dummy value");
+  auto dummyBucket = T.getNode(dummyKey);
+  curr_buckets[bucket] = dummyBucket;
+  this->buckets.store(curr_buckets);
 }
 
 bool LockFreeExtendibleHashTable::get(int key, string *value){
@@ -87,9 +111,20 @@ void LockFreeExtendibleHashTable::insert(int key, string value){
 }
 
 void LockFreeExtendibleHashTable::remove(int key){
-  
+  int size = this->size.load();
+  auto bucket = key & size; 
+  auto curr_buckets = buckets.load();
+  if (curr_buckets[bucket] == nullptr){
+    initializeBucket(bucket);
+  }
+  // removal unsuccessful, key not inserted
+  if (!T.remove(key)){
+    return;
+  }
+  this->count.fetch_sub(1);
 }
 
 void LockFreeExtendibleHashTable::update(int key, string value){
-  
+  remove(key);
+  insert(key, value);
 }
