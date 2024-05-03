@@ -25,6 +25,11 @@ class Directory{
   int global_depth;
   int bucket_size;
   std::vector<Bucket *> buckets;
+  void split(int bucketIdx);
+  int getSplitIdx(int bucketIdx);
+  void increaseGlobalDepth();
+  void print_dir();
+
   public:
     Directory(int bucket_size);
     std::shared_mutex directory_mutex;
@@ -33,8 +38,4 @@ class Directory{
     void insert(int key, std::string value);
     void remove(int key);
     void update(int key, std::string value);
-    void split(int bucketIdx);
-    int getSplitIdx(int bucketIdx);
-    void increaseGlobalDepth();
-    void print_dir();
 };
