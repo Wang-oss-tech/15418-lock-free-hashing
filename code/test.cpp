@@ -3,6 +3,7 @@
 
 
 // Testing library for a multithreaded environment
+#include <string>
 #include <thread>
 #include <iostream>
 #include <cassert>
@@ -12,42 +13,42 @@ using namespace std;
 
 
 void test_inserts(Directory* directory) {
-    printf("Inserting test 1 called \n\n");
+    printf("Inserting test 1 called \n");
     // Attempt to insert multiple values into the directory
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 0; i < 20; ++i) {
         try {
             directory->insert(i, "value" + std::to_string(i));
-            printf("\n");
+            // printf("\n");
 
         } catch (const std::exception& e) {
-            std::cerr << "Exception during insert: " << e.what() << std::endl;
+            std::cerr << "Exception during insert: " << i << e.what() << std::endl;
         }
     }
     // directory->print_dir();
 }
 
 void test_inserts_2(Directory* directory) {
-    printf("Inserting test 2 called \n\n");
+    printf("Inserting test 2 called \n");
     // Attempt to insert multiple values into the directory
-    for (int i = 20; i < 25; ++i) {
+    for (int i = 20; i < 50; ++i) {
         try {
             directory->insert(i, "value" + std::to_string(i));
-            printf("\n");
+            // printf("\n");
 
         } catch (const std::exception& e) {
-            std::cerr << "Exception during insert: " << e.what() << std::endl;
+            std::cerr << "Exception during insert: " << i << e.what() << std::endl;
         }
     }
     // directory->print_dir();
 }
 
 void test_inserts_3(Directory* directory) {
-    printf("Inserting test 3 called \n\n");
+    printf("Inserting test 3 called \n");
     // Attempt to insert multiple values into the directory
-    for (int i = 30; i < 35; ++i) {
+    for (int i = 1500; i < 3000; ++i) {
         try {
             directory->insert(i, "value" + std::to_string(i));
-            printf("\n");
+            // printf("\n");
 
         } catch (const std::exception& e) {
             std::cerr << "Exception during insert: " << e.what() << std::endl;
@@ -107,7 +108,7 @@ void test_deletes_2(Directory* directory){
     for (int i = 20; i < 25; ++i) {
         try {
             directory->insert(i, "value" + std::to_string(i));
-            printf("\n");
+            // printf("\n");
 
         } catch (const std::exception& e) {
             std::cerr << "Exception during insert: " << e.what() << std::endl;
@@ -139,27 +140,65 @@ void test_sequential(Directory *directory){
     } 
 }
 
-
-
-int main() {
-    // setting bucket size to 2 and setting directory
+void test_many_inserts(){
+    printf("Testing many inserts\n");
     Directory d = Directory(2); // adjust bucket size as needed
-    
-    
-    // testing one thread
-    // std::thread t1(test_sequential, &d);
-
+    auto start = std::chrono::high_resolution_clock::now();
 
     // Multiple Thread test
     std::thread t1(test_inserts, &d);
     std::thread t2(test_inserts_2, &d);
-    std::thread t3(test_inserts_3, &d);
+    // std::thread t3(test_inserts_3, &d);
 
     t1.join();
     t2.join();
-    t3.join();
+    // t3.join();
 
-    d.print_dir();
+    for (int i = 0; i < 30; i++){
+        string v;
+        auto b = d.get(i, &v);
+        assert(b && !v.compare("value"+std::to_string(i)));
+    }
+    // for (int i = 100; i < 110; i++){
+    //     string v;
+    //     auto b = d.get(i, &v);
+    //     assert(b && !v.compare("value"+std::to_string(i)));
+    // }
+
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = stop-start;
+    cout << "Time taken by function: "
+         << duration.count() << " microseconds" << endl;
+
+    d.print_dir(); 
+}
+
+int main() {
+    test_many_inserts();
+    // setting bucket size to 2 and setting directory
+    // Directory d = Directory(2); // adjust bucket size as needed
+    
+    
+    // auto start = std::chrono::high_resolution_clock::now();
+    // // testing one thread
+    // // std::thread t1(test_sequential, &d);
+
+
+    // // Multiple Thread test
+    // std::thread t1(test_inserts, &d);
+    // std::thread t2(test_inserts_2, &d);
+    // std::thread t3(test_inserts_3, &d);
+
+    // t1.join();
+    // t2.join();
+    // t3.join();
+
+    // auto stop = std::chrono::high_resolution_clock::now();
+    // auto duration = stop-start;
+    // cout << "Time taken by function: "
+    //      << duration.count() << " microseconds" << endl;
+
+    // d.print_dir();
 
     return 0;
 }

@@ -8,37 +8,27 @@ using namespace std;
 // some choices were made for the sake of simplicity. for example, the table only grows and never shrinks.
 LockFreeExtendibleHashTable::LockFreeExtendibleHashTable(){
   this->count.store(0); 
-  this->size.store(0); 
-  buckets = reinterpret_cast<LockFreeSortedList<int, std::string>::LockFreeSortedListItem **>(calloc(8,2));
-  T.insert(0, "dummy");
+  this->size.store(2); 
+  buckets = reinterpret_cast<LockFreeSortedList<unsigned int, std::string>::LockFreeSortedListItem **>(calloc(2,8));
+  T.insert(0, "dummy value");
   // does this work with atomic?
   buckets[0] = T.headPtr();
 }
 
-// bit reversal function taken here:
-// https://www.geeksforgeeks.org/reverse-actual-bits-given-number/
 // this would be faster with a lookup table
-int reverseBits(int n){
-    unsigned int rev = 0;
-    while (n > 0) {
-        rev <<= 1;
-
-        // if current bit is '1'
-        if ((n & 1) == 1)
-            rev ^= 1;
- 
-        // bitwise right shift
-        // 'n' by 1
-        n >>= 1;
+unsigned int reverseBits(unsigned int n){
+    unsigned int res = 0;
+    for (unsigned int i = 0; i < 32; i++) {
+      unsigned int b = (n & 1);
+      res |= b << (31 - i);
+      n >>= 1;
     }
-    return rev;
+    return res;
 }
 
-
-
 // this function flips the most significant bit
-int getParent(int key){
-	int i;
+unsigned int getParent(unsigned int key){
+	unsigned int i;
 	for (i = 31; i >= 0; i--) {
 		if (key & (1 << i)) {
       return key & ~(1 << i);
@@ -47,17 +37,22 @@ int getParent(int key){
 	return 0;
 }
 
-int makeRegularKey(int key){
-  int mask = 1 << 31;
+unsigned int LockFreeExtendibleHashTable::makeRegularKey(unsigned int key){
+  unsigned int mask = 1 << 31;
   return reverseBits(key | mask);
 }
 
-int makeDummyKey(int key){
+unsigned int LockFreeExtendibleHashTable::makeDummyKey(unsigned int key){
   return reverseBits(key);
 }
 
-void LockFreeExtendibleHashTable::initializeBucket(int bucket){
-  int parent = getParent(bucket);
+bool LockFreeExtendibleHashTable::isDummy(unsigned int key){
+  return !(key & 1) ;
+}
+
+void LockFreeExtendibleHashTable::initializeBucket(unsigned int bucket){
+  printf("Initializing bucket %d\n", bucket);
+  unsigned int parent = getParent(bucket);
   auto curr_buckets = buckets.load();
   if (curr_buckets[parent] == nullptr){
     initializeBucket(parent);
@@ -68,16 +63,19 @@ void LockFreeExtendibleHashTable::initializeBucket(int bucket){
   T.insert(dummyKey, "dummy value");
   auto dummyBucket = T.getNode(dummyKey);
   curr_buckets[bucket] = dummyBucket;
+  assert(dummyBucket->key == dummyKey);
   this->buckets.store(curr_buckets);
 }
 
-bool LockFreeExtendibleHashTable::get(int key, string *value){
-  int size = this->size.load();
-  auto bucket = key & size;
+bool LockFreeExtendibleHashTable::get(unsigned int key, string *value){
+  unsigned int size = this->size.load();
+  auto bucket = key % size;
   auto curr_buckets = buckets.load();
+  // note that just because current bucket not initalized doesn't mean
+  // its not in the table. we might have to split an old bucket to find it
   if (curr_buckets[bucket] == nullptr){
     initializeBucket(bucket);
-    return false;
+    // return false;
   }
   auto rev_key = makeRegularKey(key);
   string V;
@@ -89,9 +87,11 @@ bool LockFreeExtendibleHashTable::get(int key, string *value){
   return true;
 }
 
-void LockFreeExtendibleHashTable::insert(int key, string value){
-  int size = this->size.load();
-  auto bucket = key & size; 
+void LockFreeExtendibleHashTable::insert(unsigned int key, string value){
+  // printf("INSERTING %d\n", key);
+  unsigned int size = this->size.load();
+  auto bucket = key % size; 
+  // printf("Bucket: %d\n", bucket);
   auto curr_buckets = buckets.load();
   if (curr_buckets[bucket] == nullptr){
     initializeBucket(bucket);
@@ -103,28 +103,76 @@ void LockFreeExtendibleHashTable::insert(int key, string value){
   }
   auto csize = this->size.load();
   // change the load factor
-  if (this->count.fetch_add(1) / csize > 2){
+  auto c = this->count.fetch_add(1);
+  // printf("c: %d\n", c);
+  if ((c+1) / csize >= 2){
+    // printf("jsakldfjlkads\n");
     this->size.compare_exchange_strong(csize, 2 * csize);
-    auto new_b = reinterpret_cast<LockFreeSortedList<int, std::string>::LockFreeSortedListItem **>(calloc(8, 2 * csize));
+    auto s = this->size.load();
+    // printf("SIZE: %d\n", s);
+    auto new_b = reinterpret_cast<LockFreeSortedList<unsigned int, std::string>::LockFreeSortedListItem **>(calloc(2 * csize, 8));
+    for (int i = 0; i < csize; i++){
+      new_b[i] = curr_buckets[i];
+    }
+    // printf("finished reallocating\n");
     this->buckets.store(new_b);
   }
 }
 
-void LockFreeExtendibleHashTable::remove(int key){
-  int size = this->size.load();
-  auto bucket = key & size; 
+void LockFreeExtendibleHashTable::remove(unsigned int key){
+  unsigned int size = this->size.load();
+  auto bucket = key % size; 
   auto curr_buckets = buckets.load();
   if (curr_buckets[bucket] == nullptr){
     initializeBucket(bucket);
   }
   // removal unsuccessful, key not inserted
-  if (!T.remove(key)){
+  if (!T.remove(makeRegularKey(key))){
+    printf("can't find it\n");
     return;
   }
   this->count.fetch_sub(1);
 }
 
-void LockFreeExtendibleHashTable::update(int key, string value){
+void LockFreeExtendibleHashTable::update(unsigned int key, string value){
   remove(key);
   insert(key, value);
+}
+
+void LockFreeExtendibleHashTable::print_table(){
+  auto curr_size = this->size.load();
+  auto curr_count = this->count.load();
+  auto curr_buckets = this->buckets.load();
+  char str[100];
+  printf("------------------------------------------------------\n");
+  printf("PRINTING HASH TABLE: \n");
+  printf("Size: %d, Count, %d\n", curr_size, curr_count);
+  for(unsigned int i = 0; i < curr_size; i++){
+    auto bucket = curr_buckets[i];
+    if (bucket == nullptr){
+      continue;
+    }
+    printf("Bucket %d\n", i);
+    bucket = bucket->next_ptr;
+    // printf("ajsklfjdksla\n");
+    auto k = bucket->key;
+    // printf("key: %u\n", k);
+    while (bucket != nullptr && !isDummy(bucket->key)){
+      printf( "Key: %u, Value: %s \n", bucket->key, bucket->value.c_str());
+      bucket = bucket->next_ptr;
+    }
+    // printf("%s", str);
+    printf("\n");
+  }
+  printf("------------------------------------------------------\n");
+}
+
+void LockFreeExtendibleHashTable::print_list(){
+  auto p = T.headPtr();
+  printf("Printing list: \n");
+  while (p){
+    printf("K: %u, V: %s | ", p->key, p->value.c_str());
+    p = p->next_ptr;
+  }    
+  printf("\n");
 }
