@@ -138,7 +138,6 @@ void Directory::insert(int key, string value){
       Bucket *curr_bucket = this->buckets[this->hash(k)];
       bucket->remove(k);
       curr_bucket->insert(k, v);
-
     }
     // insert the current element. if still can't insert, need to keep splitting
     Bucket *new_bucket = this->buckets[this->hash(key)];
@@ -237,7 +236,7 @@ void Directory::increaseGlobalDepth(){
     this->buckets.emplace_back(buckets[i]);
   }
   this->global_depth++;
-  printf("NEW GLOBAL: %d\n", this->global_depth);
+  // printf("NEW GLOBAL: %d\n", this->global_depth);
   // directory_lock.unlock();
 }
 

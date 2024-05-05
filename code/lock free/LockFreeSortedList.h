@@ -8,6 +8,7 @@
 #ifndef LOCKFREESORTEDLIST_H
 #define LOCKFREESORTEDLIST_H
 #include <atomic>
+#include <cstdio>
 #include <vector>
 
 template <class K,class v>
@@ -215,7 +216,7 @@ public:
       K ik = p->key;
       // sorted so can't be in list
       if (ik > key){
-        return false;
+        return nullptr;
       }
       if (ik == key)
       {
@@ -226,6 +227,29 @@ public:
     }
     return nullptr;
   }
+
+  // void print_list(){
+  //   // m_transcount.fetch_add(1);
+  //   struct LockFreeSortedListItem *p = head;
+  //   printf("Printing list: \n");
+  //   while (p)
+  //   {
+  //     K ik = p->key;
+  //     v iv = p->value;
+  //     printf("K: %d, v)
+  //     // sorted so can't be in list
+  //     if (ik > key){
+  //       return nullptr;
+  //     }
+  //     if (ik == key)
+  //     {
+  //       v rba(p->value);
+  //       return p;
+  //     } 
+  //     p = p->next_ptr;
+  //   }
+  //   return nullptr;
+  // }
 
   struct LockFreeSortedListItem *headPtr() { return head; }
 

@@ -28,7 +28,6 @@ class Directory{
   void split(int bucketIdx);
   int getSplitIdx(int bucketIdx);
   void increaseGlobalDepth();
-  void print_dir();
 
   public:
     Directory(int bucket_size);
@@ -38,4 +37,5 @@ class Directory{
     void insert(int key, std::string value);
     void remove(int key);
     void update(int key, std::string value);
+    void print_dir();
 };
